@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>Shop des Habits et EPI</title>
+  <title>Boutique vêtements pro</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
     /* Style global – design moderne, épuré et responsive */
@@ -62,7 +62,7 @@
       display: none;
       z-index: 2000;
     }
-    /* Tableau des équipements */
+    /* Tableau des équipements et autres tables */
     table {
       width: 100%;
       border-collapse: collapse;
@@ -183,7 +183,7 @@
       font-size: 14px;
       display: none;
     }
-    /* Spinner de chargement */
+    /* Spinner de chargement global */
     #loadingSpinner {
       display: none;
       position: fixed;
@@ -240,7 +240,7 @@
   </style>
 </head>
 <body>
-  <!-- Spinner de chargement -->
+  <!-- Spinner de chargement global -->
   <div id="loadingSpinner">
     <div class="spinner"></div>
   </div>
@@ -257,7 +257,7 @@
   <button id="logoutBtn">Déconnexion</button>
   
   <div class="container">
-    <h1>Shop des Habits et EPI</h1>
+    <h1>Boutique vêtements pro</h1>
     
     <!-- Section de connexion centrée -->
     <div id="login-section">
@@ -271,7 +271,7 @@
     <div id="main-section" style="display: none;">
       <h2>Bienvenue, <span id="employeeName"></span>!</h2>
       
-      <!-- Affichage du quota (possédé / droit à) -->
+      <!-- Affichage du quota sous forme de tableau -->
       <div id="quotaInfo"></div>
       
       <h3>Mes équipements (quota uniquement)</h3>
@@ -437,6 +437,18 @@
     };
     
     /*******************************************************
+     * Fonction utilitaire : formater la date (DD.MM.YYYY)
+     *******************************************************/
+    function formatDate(dateStr) {
+      if (!dateStr) return "";
+      const d = new Date(dateStr);
+      const day = ("0" + d.getDate()).slice(-2);
+      const month = ("0" + (d.getMonth() + 1)).slice(-2);
+      const year = d.getFullYear();
+      return day + "." + month + "." + year;
+    }
+    
+    /*******************************************************
      * INTÉGRATION GOOGLE SHEETS
      * Utilisation de JSONP pour le GET (pour contourner CORS)
      * et fetch avec mode "no-cors" pour le POST.
@@ -513,29 +525,43 @@
         let sorted = currentEmployee.equipment.slice().sort((a, b) => a.type.localeCompare(b.type));
         sorted.forEach(item => {
           let tr = document.createElement("tr");
-          tr.innerHTML = `<td>${articleMapping[item.type] || item.type}</td><td>${item.size}</td><td>${item.date}</td><td>${item.status}</td>`;
+          tr.innerHTML = `<td>${articleMapping[item.type] || item.type}</td>
+                          <td>${item.size}</td>
+                          <td>${formatDate(item.date)}</td>
+                          <td>${item.status}</td>`;
           tbody.appendChild(tr);
         });
       }
     }
     
     /*******************************************************
-     * Affichage du quota possédé / droit à
+     * Affichage du quota possédé / droit à sous forme de tableau
      *******************************************************/
     function updateQuotaInfo() {
       const quotaDiv = document.getElementById("quotaInfo");
       if (!currentEmployee || !currentEmployee.quota) {
-        quotaDiv.textContent = "";
+        quotaDiv.innerHTML = "";
         return;
       }
-      let html = "<strong>Quota :</strong><br>";
+      let html = `<table>
+        <thead>
+          <tr>
+            <th>Équipement</th>
+            <th>Quota (Possédé / Droit à)</th>
+          </tr>
+        </thead>
+        <tbody>`;
       for (let type in currentEmployee.quota) {
         // Compter uniquement les équipements du quota (pas les surplus)
         let count = currentEmployee.equipment.filter(eq => 
           eq.type === type && (eq.status === "attribué" || eq.status === "en commande" || eq.status === "recu")
         ).length;
-        html += `${articleMapping[type] || type} : ${count} / ${currentEmployee.quota[type]}<br>`;
+        html += `<tr>
+                  <td>${articleMapping[type] || type}</td>
+                  <td>${count} / ${currentEmployee.quota[type]}</td>
+                 </tr>`;
       }
+      html += `</tbody></table>`;
       quotaDiv.innerHTML = html;
     }
     
@@ -608,7 +634,7 @@
         currentEmployee.equipment.forEach(item => {
           let opt = document.createElement("option");
           opt.value = item.id;
-          opt.textContent = `${articleMapping[item.type] || item.type} (Taille: ${item.size}) – Commandé le ${item.date}`;
+          opt.textContent = `${articleMapping[item.type] || item.type} (Taille: ${item.size}) – Commandé le ${formatDate(item.date)}`;
           exchangeSelect.appendChild(opt);
         });
       }
@@ -665,9 +691,19 @@
           let actionBtn = `<button onclick="removeCartItem(${index})" class="close-btn">X</button>`;
           if (item.mode === "shop") {
             let priceDisplay = item.orderType === "Surplus" ? `CHF ${item.price}` : "-";
-            tr.innerHTML = `<td>Shop</td><td>${articleMapping[item.type] || item.type}</td><td>${item.size}</td><td>${item.orderType}</td><td>${priceDisplay}</td><td>${actionBtn}</td>`;
+            tr.innerHTML = `<td>Shop</td>
+                            <td>${articleMapping[item.type] || item.type}</td>
+                            <td>${item.size}</td>
+                            <td>${item.orderType}</td>
+                            <td>${priceDisplay}</td>
+                            <td>${actionBtn}</td>`;
           } else if (item.mode === "exchange") {
-            tr.innerHTML = `<td>Échange</td><td>${articleMapping[item.type] || item.type}</td><td>${item.size}</td><td>-</td><td>-</td><td>${actionBtn}</td>`;
+            tr.innerHTML = `<td>Échange</td>
+                            <td>${articleMapping[item.type] || item.type}</td>
+                            <td>${item.size}</td>
+                            <td>-</td>
+                            <td>-</td>
+                            <td>${actionBtn}</td>`;
           }
           tbody.appendChild(tr);
         });
@@ -699,7 +735,11 @@
       } else {
         currentEmployee.surplusOrders.forEach(order => {
           let tr = document.createElement("tr");
-          tr.innerHTML = `<td>${articleMapping[order.type] || order.type}</td><td>${order.size}</td><td>CHF ${order.price}</td><td>${order.date}</td><td>${order.status || "en commande"}</td>`;
+          tr.innerHTML = `<td>${articleMapping[order.type] || order.type}</td>
+                          <td>${order.size}</td>
+                          <td>CHF ${order.price}</td>
+                          <td>${formatDate(order.date)}</td>
+                          <td>${order.status || "en commande"}</td>`;
           tbody.appendChild(tr);
         });
       }
@@ -849,7 +889,7 @@
           return;
         }
       }
-      const dateNow = new Date().toLocaleString();
+      const dateNow = new Date().toISOString();
       ensureEmployeeArrays();
       cart.forEach(item => {
         if (item.mode === "shop") {
@@ -916,16 +956,23 @@
         } else {
           orders.forEach(order => {
             let tr = document.createElement("tr");
-            tr.innerHTML = `<td>${order.empId}</td><td>${articleMapping[order.type] || order.type}</td><td>${order.size}</td><td>${order.date}</td><td>${order.orderType || "Quota"}</td>
-              <td><button class="btn" onclick="validateOrder('${order.empId}','${order.id}','${order.orderType || "Quota"}')">Valider</button></td>`;
+            tr.innerHTML = `<td>${order.empId}</td>
+                            <td>${articleMapping[order.type] || order.type}</td>
+                            <td>${order.size}</td>
+                            <td>${formatDate(order.date)}</td>
+                            <td>${order.orderType || "Quota"}</td>
+                            <td><button class="btn" onclick="validateOrder(this, '${order.empId}','${order.id}','${order.orderType || "Quota"}')">Valider</button></td>`;
             tbody.appendChild(tr);
           });
         }
       }).catch(err => console.error(err));
     }
     
-    // Fonction de validation d'une commande (admin)
-    function validateOrder(empId, orderId, orderType) {
+    // Fonction de validation d'une commande (admin) avec spinner dans le bouton
+    function validateOrder(btn, empId, orderId, orderType) {
+      const originalText = btn.innerHTML;
+      btn.disabled = true;
+      btn.innerHTML = `<div class="spinner" style="width:20px; height:20px; border-width:3px;"></div>`;
       fetchEmployeeData(empId)
         .then(data => {
           if (orderType === "Quota") {
@@ -934,23 +981,19 @@
             if(order && order.status === "en commande") {
               order.status = "recu";
             }
-            updateEmployeeData(empId, equipment, data.surplusOrders)
-              .then(result => {
-                console.log("Commande validée :", result);
-                updatePendingOrders();
-              });
+            return updateEmployeeData(empId, equipment, data.surplusOrders);
           } else if (orderType === "Surplus") {
             let surplusOrders = data.surplusOrders || [];
             let order = surplusOrders.find(item => item.id === orderId);
             if(order && order.status === "en commande") {
               order.status = "recu";
             }
-            updateEmployeeData(empId, data.equipment, surplusOrders)
-              .then(result => {
-                console.log("Commande validée :", result);
-                updatePendingOrders();
-              });
+            return updateEmployeeData(empId, data.equipment, surplusOrders);
           }
+        })
+        .then(result => {
+          console.log("Commande validée :", result);
+          updatePendingOrders();
         })
         .catch(err => console.error(err));
     }
