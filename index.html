@@ -503,40 +503,39 @@
     }
     
     /*******************************************************
-     * Fonction pour envoyer un email de notification
+     * Fonction pour envoyer une notification de nouvelle commande
      *******************************************************/
-    function sendOrderEmail(item, employee) {
+    function sendOrderNotification(item, employee) {
+      if (!("Notification" in window)) {
+        console.log("Ce navigateur ne supporte pas les notifications de bureau.");
+        return;
+      }
+      if (Notification.permission !== "granted") {
+        Notification.requestPermission().then(permission => {
+          if (permission === "granted") {
+            createNotification(item, employee);
+          }
+        });
+      } else {
+        createNotification(item, employee);
+      }
+    }
+    function createNotification(item, employee) {
       let message = "Nouvelle commande effectuée:\n";
       message += "Employé : " + employee.name + " (" + employee.id + ")\n";
-      if (item.mode === "shop") {
+      if(item.mode === "shop") {
         message += "Type : " + (articleMapping[item.type] || item.type) + "\n";
         message += "Taille : " + item.size + "\n";
-        message += "Mode : Shop (" + item.orderType + ")\n";
+        message += "Mode : Shop (" + item.orderType + ")";
         if(item.orderType === "Surplus") {
-          message += "Prix : CHF " + item.price + "\n";
+          message += "\nPrix : CHF " + item.price;
         }
-      } else if (item.mode === "exchange") {
+      } else if(item.mode === "exchange") {
         message += "Échange : " + (articleMapping[item.type] || item.type) + "\n";
         message += "Taille : " + item.size + "\n";
-        message += "Photo fournie : " + (item.photo ? "Oui" : "Non") + "\n";
+        message += "Photo : " + (item.photo ? "Fournie" : "Non");
       }
-      message += "Date : " + formatDate(new Date().toISOString());
-      
-      const emailPayload = {
-        action: "sendEmail",
-        email: "l.betrisey@solioz-merkli.ch",
-        subject: "Nouvelle commande",
-        message: message
-      };
-      
-      fetch(SHEET_API_URL, {
-        method: "POST",
-        mode: "no-cors",
-        body: JSON.stringify(emailPayload),
-        headers: {"Content-Type": "application/json"}
-      }).then(() => {
-        console.log("Email envoyé pour la commande :", item);
-      }).catch(err => console.error("Erreur d'envoi d'email", err));
+      new Notification("Nouvelle commande", { body: message });
     }
     
     let currentEmployee = null;
@@ -934,7 +933,7 @@
     /*******************************************************
      * Confirmation du panier (checkout)
      * La confirmation de surplus s'affiche uniquement pour les commandes en surplus.
-     * Un email de notification est envoyé pour chaque commande effectuée.
+     * Une notification est affichée pour chaque commande effectuée.
      *******************************************************/
     document.getElementById("confirmCartBtn").addEventListener("click", function() {
       computeCartStatus();
@@ -948,7 +947,7 @@
       }
       const dateNow = new Date().toISOString();
       ensureEmployeeArrays();
-      // Conserver une copie des items pour l'envoi d'email après traitement
+      // Conserver une copie des items pour la notification après traitement
       const processedCart = [...cart];
       cart.forEach(item => {
         if (item.mode === "shop") {
@@ -981,9 +980,9 @@
       document.getElementById("cartMessage").textContent = "Commande traitée avec succès.";
       updateEmployeeData(currentEmployee.id, currentEmployee.equipment, currentEmployee.surplusOrders)
         .then(result => {
-          // Envoi d'email pour chaque item traité
+          // Affichage d'une notification pour chaque commande
           processedCart.forEach(item => {
-            sendOrderEmail(item, currentEmployee);
+            sendOrderNotification(item, currentEmployee);
           });
           console.log("Mise à jour réussie :", result);
         })
