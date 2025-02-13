@@ -229,6 +229,14 @@
       background: #f9f9f9;
       font-size: 0.9em;
     }
+    /* Image styling for shop modal */
+    #shopArticleImage {
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      max-width: 100%;
+      margin-top: 10px;
+    }
   </style>
 </head>
 <body>
@@ -335,6 +343,8 @@
     <select id="shopEquipmentType"></select><br>
     <label for="shopSize">Taille :</label>
     <select id="shopSize"></select><br>
+    <!-- Image pour l'article sélectionné -->
+    <img id="shopArticleImage" src="" alt="Image de l'article">
     <button id="addToShopCartBtn" class="btn">Ajouter au panier</button>
     <button id="closeShopModal" class="close-btn">Fermer</button>
   </div>
@@ -398,6 +408,35 @@
   
   <script>
     /*******************************************************
+     * Configuration et mapping des articles
+     *******************************************************/
+    const articleMapping = {
+      "pantalon": "Pantalon à taille élastique de signal. e.s.motion",
+      "polo": "STONEKIT Chemise polo haute visibilité",
+      "polaire": "STONEKIT Veste de signalisation laine polaire",
+      "casque": "KASK Casque de protection Superplasma AQ",
+      "veste": "STONEKIT Parka veste de signalisation",
+      "lunettes": "e.s. Lunettes de protection Finlay",
+      "chaussures": "GARSPORT Chaussure de sécurité Alpine Route Yellow S3",
+      "chapeau": "KASK Pare-soleil",
+      "adaptateur": "Adaptateur protec auditive KASK 30 mm",
+      "habits_pluie": "STONEKIT Veste de pluie de signalisation"
+    };
+    
+    const articleImages = {
+      "pantalon": "https://via.placeholder.com/300?text=Pantalon+à+taille+élastique",
+      "polo": "https://via.placeholder.com/300?text=STONEKIT+Chemise+polo",
+      "polaire": "https://via.placeholder.com/300?text=STONEKIT+Veste+de+signalisation+laine+polaire",
+      "casque": "https://via.placeholder.com/300?text=KASK+Casque+Superplasma+AQ",
+      "veste": "https://via.placeholder.com/300?text=STONEKIT+Parka+veste+de+signalisation",
+      "lunettes": "https://via.placeholder.com/300?text=e.s.+Lunettes+de+protection+Finlay",
+      "chaussures": "https://via.placeholder.com/300?text=GARSPORT+Chaussure+Alpine+Route+Yellow+S3",
+      "chapeau": "https://via.placeholder.com/300?text=KASK+Pare-soleil",
+      "adaptateur": "https://via.placeholder.com/300?text=Adaptateur+protec+auditive+KASK+30+mm",
+      "habits_pluie": "https://via.placeholder.com/300?text=STONEKIT+Veste+de+pluie+de+signalisation"
+    };
+    
+    /*******************************************************
      * INTÉGRATION GOOGLE SHEETS
      * Utilisation de JSONP pour le GET (pour contourner CORS)
      * et fetch avec mode "no-cors" pour le POST.
@@ -417,7 +456,7 @@
       });
     }
     
-    // Nouvelle fonction pour récupérer toutes les commandes en "en commande" (pour l'admin)
+    // Fonction pour récupérer toutes les commandes en "en commande" (pour l'admin)
     function fetchAllOrders() {
       return new Promise((resolve, reject) => {
         window.handleAllOrders = function(data) {
@@ -445,33 +484,6 @@
         headers: {"Content-Type": "application/json"}
       }).then(() => ({ status: "success" }));
     }
-    
-    /*******************************************************
-     * Données simulées initiales (pour tests locaux)
-     *******************************************************/
-    let employees = [
-      { 
-        id: "emp001", 
-        name: "Alice", 
-        quota: { pantalon: 2, polo: 3, polaire: 1, casque: 1, veste: 1, lunettes: 1, chaussures: 1, chapeau: 1, adaptateur: 1, habits_pluie: 1 },
-        equipment: [],
-        surplusOrders: []
-      },
-      { 
-        id: "emp002", 
-        name: "Bob", 
-        quota: { pantalon: 2, polo: 3, polaire: 1, casque: 1, veste: 1, lunettes: 1, chaussures: 1, chapeau: 1, adaptateur: 1, habits_pluie: 1 },
-        equipment: [],
-        surplusOrders: []
-      },
-      { 
-        id: "admin", 
-        name: "Administrateur", 
-        quota: {}, 
-        equipment: [],
-        surplusOrders: []
-      }
-    ];
     
     let currentEmployee = null;
     // Panier commun – items en mode "shop" ou "exchange"
@@ -501,7 +513,7 @@
         let sorted = currentEmployee.equipment.slice().sort((a, b) => a.type.localeCompare(b.type));
         sorted.forEach(item => {
           let tr = document.createElement("tr");
-          tr.innerHTML = `<td>${item.type}</td><td>${item.size}</td><td>${item.date}</td><td>${item.status}</td>`;
+          tr.innerHTML = `<td>${articleMapping[item.type] || item.type}</td><td>${item.size}</td><td>${item.date}</td><td>${item.status}</td>`;
           tbody.appendChild(tr);
         });
       }
@@ -522,7 +534,7 @@
         let count = currentEmployee.equipment.filter(eq => 
           eq.type === type && (eq.status === "attribué" || eq.status === "en commande" || eq.status === "recu")
         ).length;
-        html += `${type} : ${count} / ${currentEmployee.quota[type]}<br>`;
+        html += `${articleMapping[type] || type} : ${count} / ${currentEmployee.quota[type]}<br>`;
       }
       quotaDiv.innerHTML = html;
     }
@@ -537,7 +549,7 @@
       for (let type in currentEmployee.quota) {
         let opt = document.createElement("option");
         opt.value = type;
-        opt.textContent = type;
+        opt.textContent = articleMapping[type] || type;
         shopTypeSelect.appendChild(opt);
       }
       updateShopSizeDropdown();
@@ -573,6 +585,13 @@
         opt.textContent = "Non applicable";
         shopSizeSelect.appendChild(opt);
       }
+      // Mise à jour de l'image de l'article dans le shop
+      const shopImage = document.getElementById("shopArticleImage");
+      if (shopImage && articleImages[selectedType]) {
+        shopImage.src = articleImages[selectedType];
+      } else {
+        shopImage.src = "";
+      }
     }
     document.getElementById("shopEquipmentType").addEventListener("change", updateShopSizeDropdown);
     
@@ -589,7 +608,7 @@
         currentEmployee.equipment.forEach(item => {
           let opt = document.createElement("option");
           opt.value = item.id;
-          opt.textContent = `${item.type} (Taille: ${item.size}) – Commandé le ${item.date}`;
+          opt.textContent = `${articleMapping[item.type] || item.type} (Taille: ${item.size}) – Commandé le ${item.date}`;
           exchangeSelect.appendChild(opt);
         });
       }
@@ -646,14 +665,14 @@
           let actionBtn = `<button onclick="removeCartItem(${index})" class="close-btn">X</button>`;
           if (item.mode === "shop") {
             let priceDisplay = item.orderType === "Surplus" ? `CHF ${item.price}` : "-";
-            tr.innerHTML = `<td>Shop</td><td>${item.type}</td><td>${item.size}</td><td>${item.orderType}</td><td>${priceDisplay}</td><td>${actionBtn}</td>`;
+            tr.innerHTML = `<td>Shop</td><td>${articleMapping[item.type] || item.type}</td><td>${item.size}</td><td>${item.orderType}</td><td>${priceDisplay}</td><td>${actionBtn}</td>`;
           } else if (item.mode === "exchange") {
-            tr.innerHTML = `<td>Échange</td><td>${item.type}</td><td>${item.size}</td><td>-</td><td>-</td><td>${actionBtn}</td>`;
+            tr.innerHTML = `<td>Échange</td><td>${articleMapping[item.type] || item.type}</td><td>${item.size}</td><td>-</td><td>-</td><td>${actionBtn}</td>`;
           }
           tbody.appendChild(tr);
         });
       }
-      // Afficher la confirmation de déduction de salaire uniquement s'il y a une commande surplus
+      // Afficher la confirmation de déduction de salaire uniquement s'il y a une commande en surplus
       if (cart.some(item => item.mode === "shop" && item.orderType === "Surplus")) {
         document.getElementById("surplusConfirmationContainer").style.display = "block";
       } else {
@@ -680,7 +699,7 @@
       } else {
         currentEmployee.surplusOrders.forEach(order => {
           let tr = document.createElement("tr");
-          tr.innerHTML = `<td>${order.type}</td><td>${order.size}</td><td>CHF ${order.price}</td><td>${order.date}</td><td>${order.status || "en commande"}</td>`;
+          tr.innerHTML = `<td>${articleMapping[order.type] || order.type}</td><td>${order.size}</td><td>CHF ${order.price}</td><td>${order.date}</td><td>${order.status || "en commande"}</td>`;
           tbody.appendChild(tr);
         });
       }
@@ -739,26 +758,7 @@
         .catch(err => {
           document.getElementById("loadingSpinner").style.display = "none";
           console.error(err);
-          let localEmp = employees.find(emp => emp.id === empId);
-          if(localEmp) {
-            currentEmployee = localEmp;
-            ensureEmployeeArrays();
-            document.getElementById("login-section").style.display = "none";
-            document.getElementById("main-section").style.display = "block";
-            document.getElementById("logoutBtn").style.display = "block";
-            document.getElementById("cartIcon").style.display = "flex";
-            document.getElementById("employeeName").textContent = currentEmployee.name;
-            updateEquipmentTable();
-            populateShopMenu();
-            populateExchangeMenu();
-            updateQuotaInfo();
-            if (empId === "admin") {
-              document.getElementById("admin-section").style.display = "block";
-              updatePendingOrders();
-            }
-          } else {
-            loginMessage.textContent = "Identifiant non trouvé.";
-          }
+          loginMessage.textContent = "Identifiant non trouvé.";
         });
     });
     
@@ -915,11 +915,8 @@
           tbody.appendChild(tr);
         } else {
           orders.forEach(order => {
-            // Récupérer le nom de l'employé depuis le tableau simulé (si disponible)
-            let emp = employees.find(e => e.id === order.empId);
-            let empName = emp ? emp.name : order.empId;
             let tr = document.createElement("tr");
-            tr.innerHTML = `<td>${empName}</td><td>${order.type}</td><td>${order.size}</td><td>${order.date}</td><td>${order.orderType || "Quota"}</td>
+            tr.innerHTML = `<td>${order.empId}</td><td>${articleMapping[order.type] || order.type}</td><td>${order.size}</td><td>${order.date}</td><td>${order.orderType || "Quota"}</td>
               <td><button class="btn" onclick="validateOrder('${order.empId}','${order.id}','${order.orderType || "Quota"}')">Valider</button></td>`;
             tbody.appendChild(tr);
           });
