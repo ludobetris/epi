@@ -47,7 +47,7 @@
       color: #fff;
       border-radius: 4px;
     }
-    /* Bouton déconnexion */
+    /* Bouton déconnexion – affiché toujours au premier plan */
     #logoutBtn {
       position: absolute;
       top: 20px;
@@ -60,6 +60,7 @@
       border-radius: 4px;
       cursor: pointer;
       display: none;
+      z-index: 2000;
     }
     /* Tableau des équipements */
     table {
@@ -112,12 +113,36 @@
       overflow-y: auto;
       width: 90%;
       max-width: 500px;
+      text-align: center;
     }
     .modal.active {
       display: block;
     }
     .modal h3 {
       margin-top: 0;
+      font-size: 1.5em;
+      margin-bottom: 20px;
+    }
+    .modal label {
+      font-size: 1.2em;
+      margin: 10px 0;
+      display: block;
+    }
+    .modal input,
+    .modal select,
+    .modal textarea {
+      font-size: 1.1em;
+      padding: 10px;
+      margin: 10px 0;
+      width: 100%;
+      box-sizing: border-box;
+    }
+    .modal button,
+    .modal .btn,
+    .modal .close-btn {
+      font-size: 1.2em;
+      padding: 12px 20px;
+      margin: 10px;
     }
     /* Overlay pour modales */
     .overlay {
@@ -131,13 +156,14 @@
     .overlay.active {
       display: block;
     }
-    /* Icône du panier en haut à droite */
+    /* Icône du panier en haut à droite – toujours au premier plan */
     #cartIcon {
       position: fixed;
       top: 20px;
       right: 20px;
       font-size: 30px;
       cursor: pointer;
+      z-index: 2000;
     }
     #cartIcon .badge {
       position: absolute;
@@ -178,6 +204,13 @@
       }
       #cartIcon {
         font-size: 26px;
+        top: 10px;
+        right: 10px;
+      }
+      #logoutBtn {
+        top: 10px;
+        left: 10px;
+        font-size: 1em;
       }
     }
     /* Section d'affichage du quota */
@@ -365,7 +398,7 @@
      * Utilisation de JSONP pour le GET (pour contourner CORS)
      * et fetch avec mode "no-cors" pour le POST.
      *******************************************************/
-    const SHEET_API_URL = "https://script.google.com/macros/s/AKfycbyCNAl-meLemHMJYYOiguFStrWIGeeBmpexuo3Sn8J9xhXgkLcWAUotdgXXIbjKiFQ/exec";
+    const SHEET_API_URL = "https://script.google.com/macros/s/AKfycbyNkJscWQhl9Ez6riGKem6jUvo7ZpIwlhbJhCUXMBTTEEJE5UxaTahiH01KD_BydRE68Q/exec";
     
     // Récupérer les données d'un employé via JSONP
     function fetchEmployeeData(empId) {
