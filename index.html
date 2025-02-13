@@ -261,6 +261,8 @@
     
     <!-- Section de connexion centrée -->
     <div id="login-section">
+      <!-- Logo de l'entreprise -->
+      <img src="https://github.com/ludobetris/3d-models/raw/main/logo___2019.png" alt="Logo" style="max-width: 200px; display: block; margin: 0 auto 20px auto;">
       <h2>Connexion Employé</h2>
       <input type="text" id="employeeId" placeholder="Entrez votre identifiant">
       <button id="loginBtn" class="btn">Se connecter</button>
@@ -354,6 +356,9 @@
     <h3>Faire un échange</h3>
     <label for="exchangeItemSelect">Choisissez l'article à échanger :</label>
     <select id="exchangeItemSelect"></select><br>
+    <!-- Avertissement et prise de photo obligatoire -->
+    <p style="color: red; font-weight: bold;">Prenez une photo de vos équipements rendus pour échange dans la palette box.</p>
+    <input type="file" id="exchangePhoto" accept="image/*" capture="environment"><br>
     <button id="addToExchangeCartBtn" class="btn">Ajouter au panier</button>
     <button id="closeExchangeModal" class="close-btn">Fermer</button>
   </div>
@@ -495,6 +500,43 @@
         body: JSON.stringify(payload),
         headers: {"Content-Type": "application/json"}
       }).then(() => ({ status: "success" }));
+    }
+    
+    /*******************************************************
+     * Fonction pour envoyer un email de notification
+     *******************************************************/
+    function sendOrderEmail(item, employee) {
+      let message = "Nouvelle commande effectuée:\n";
+      message += "Employé : " + employee.name + " (" + employee.id + ")\n";
+      if (item.mode === "shop") {
+        message += "Type : " + (articleMapping[item.type] || item.type) + "\n";
+        message += "Taille : " + item.size + "\n";
+        message += "Mode : Shop (" + item.orderType + ")\n";
+        if(item.orderType === "Surplus") {
+          message += "Prix : CHF " + item.price + "\n";
+        }
+      } else if (item.mode === "exchange") {
+        message += "Échange : " + (articleMapping[item.type] || item.type) + "\n";
+        message += "Taille : " + item.size + "\n";
+        message += "Photo fournie : " + (item.photo ? "Oui" : "Non") + "\n";
+      }
+      message += "Date : " + formatDate(new Date().toISOString());
+      
+      const emailPayload = {
+        action: "sendEmail",
+        email: "l.betrisey@solioz-merkli.ch",
+        subject: "Nouvelle commande",
+        message: message
+      };
+      
+      fetch(SHEET_API_URL, {
+        method: "POST",
+        mode: "no-cors",
+        body: JSON.stringify(emailPayload),
+        headers: {"Content-Type": "application/json"}
+      }).then(() => {
+        console.log("Email envoyé pour la commande :", item);
+      }).catch(err => console.error("Erreur d'envoi d'email", err));
     }
     
     let currentEmployee = null;
@@ -865,19 +907,34 @@
     
     /*******************************************************
      * Bouton "Ajouter au panier" dans le popup Échange
+     * Vérifie que l'utilisateur a bien pris une photo via le champ dédié.
      *******************************************************/
     document.getElementById("addToExchangeCartBtn").addEventListener("click", function() {
       const selectedId = document.getElementById("exchangeItemSelect").value;
       const eq = currentEmployee.equipment.find(item => item.id === selectedId);
       if (!eq) return;
-      cart.push({ mode: "exchange", equipmentId: eq.id, type: eq.type, size: eq.size });
-      updateCartBadge();
-      hideModal("exchangeModal");
+      const photoInput = document.getElementById("exchangePhoto");
+      if (photoInput.files.length === 0) {
+        alert("Prenez une photo de vos équipements dans rendus pour échange dans la palette box.");
+        return;
+      }
+      const file = photoInput.files[0];
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        let photoDataUrl = e.target.result;
+        cart.push({ mode: "exchange", equipmentId: eq.id, type: eq.type, size: eq.size, photo: photoDataUrl });
+        updateCartBadge();
+        hideModal("exchangeModal");
+        // Réinitialiser le champ photo pour la prochaine utilisation
+        photoInput.value = "";
+      };
+      reader.readAsDataURL(file);
     });
     
     /*******************************************************
      * Confirmation du panier (checkout)
-     * Le champ email a été retiré ; la confirmation de surplus s'affiche uniquement pour les commandes en surplus.
+     * La confirmation de surplus s'affiche uniquement pour les commandes en surplus.
+     * Un email de notification est envoyé pour chaque commande effectuée.
      *******************************************************/
     document.getElementById("confirmCartBtn").addEventListener("click", function() {
       computeCartStatus();
@@ -891,6 +948,8 @@
       }
       const dateNow = new Date().toISOString();
       ensureEmployeeArrays();
+      // Conserver une copie des items pour l'envoi d'email après traitement
+      const processedCart = [...cart];
       cart.forEach(item => {
         if (item.mode === "shop") {
           if (item.orderType === "Quota") {
@@ -921,7 +980,13 @@
       });
       document.getElementById("cartMessage").textContent = "Commande traitée avec succès.";
       updateEmployeeData(currentEmployee.id, currentEmployee.equipment, currentEmployee.surplusOrders)
-        .then(result => console.log("Mise à jour réussie :", result))
+        .then(result => {
+          // Envoi d'email pour chaque item traité
+          processedCart.forEach(item => {
+            sendOrderEmail(item, currentEmployee);
+          });
+          console.log("Mise à jour réussie :", result);
+        })
         .catch(err => console.error(err));
       cart = [];
       updateCartBadge();
