@@ -625,7 +625,9 @@
             counts[item.type]++;
           } else {
             item.orderType = "Surplus";
-            item.price = surplusPrices[item.type] || 0;
+            // Conversion en minuscules et suppression des espaces pour correspondre aux clés de surplusPrices
+            let typeKey = item.type.toString().trim().toLowerCase();
+            item.price = surplusPrices[typeKey] || 0;
           }
         }
       });
@@ -726,7 +728,6 @@
             populateShopMenu();
             populateExchangeMenu();
             updateQuotaInfo();
-            // Afficher la confirmation pour les commandes en surplus si nécessaire
             if (empId === "admin") {
               document.getElementById("admin-section").style.display = "block";
               updatePendingOrders();
@@ -745,7 +746,6 @@
             document.getElementById("login-section").style.display = "none";
             document.getElementById("main-section").style.display = "block";
             document.getElementById("logoutBtn").style.display = "block";
-            // Afficher l'icône du panier après connexion
             document.getElementById("cartIcon").style.display = "flex";
             document.getElementById("employeeName").textContent = currentEmployee.name;
             updateEquipmentTable();
