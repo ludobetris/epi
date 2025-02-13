@@ -156,7 +156,7 @@
     .overlay.active {
       display: block;
     }
-    /* Icône du panier en haut à droite – sur un fond rond bleu clair et masqué sur la page de connexion */
+    /* Icône du panier en haut à droite – sur fond rond bleu clair, fixe et masquée sur la page de connexion */
     #cartIcon {
       position: fixed;
       top: 20px;
@@ -240,7 +240,7 @@
   <!-- Overlay pour modales -->
   <div id="overlay" class="overlay"></div>
   
-  <!-- Icône du panier (masquée sur la page de connexion) -->
+  <!-- Icône du panier (fixe, masquée sur la page de connexion) -->
   <div id="cartIcon">
     🛒<span class="badge" id="cartCount">0</span>
   </div>
@@ -386,10 +386,7 @@
         <!-- Rempli dynamiquement -->
       </tbody>
     </table>
-    <!-- Champ Email -->
-    <label for="cartEmailInput">Votre adresse email :</label>
-    <input type="email" id="cartEmailInput" placeholder="ex: email@exemple.com"><br>
-    <!-- Confirmation pour surplus -->
+    <!-- La confirmation de déduction de salaire s'affichera uniquement pour une commande en surplus -->
     <div id="surplusConfirmationContainer" style="display: none; margin:10px 0;">
       <input type="checkbox" id="surplusConfirmCheckbox">
       <label for="surplusConfirmCheckbox">Je confirme ma commande supplémentaire et accepte la déduction de salaires</label>
@@ -654,6 +651,12 @@
           tbody.appendChild(tr);
         });
       }
+      // Afficher la confirmation de déduction de salaire uniquement s'il y a une commande surplus
+      if (cart.some(item => item.mode === "shop" && item.orderType === "Surplus")) {
+        document.getElementById("surplusConfirmationContainer").style.display = "block";
+      } else {
+        document.getElementById("surplusConfirmationContainer").style.display = "none";
+      }
     }
     function removeCartItem(index) {
       cart.splice(index, 1);
@@ -723,9 +726,7 @@
             populateShopMenu();
             populateExchangeMenu();
             updateQuotaInfo();
-            // Afficher la confirmation pour les commandes en surplus
-            document.getElementById("surplusConfirmationContainer").style.display = "block";
-            // Si l'utilisateur est admin, charger toutes les commandes en cours
+            // Afficher la confirmation pour les commandes en surplus si nécessaire
             if (empId === "admin") {
               document.getElementById("admin-section").style.display = "block";
               updatePendingOrders();
@@ -751,7 +752,6 @@
             populateShopMenu();
             populateExchangeMenu();
             updateQuotaInfo();
-            document.getElementById("surplusConfirmationContainer").style.display = "block";
             if (empId === "admin") {
               document.getElementById("admin-section").style.display = "block";
               updatePendingOrders();
@@ -837,11 +837,11 @@
     
     /*******************************************************
      * Confirmation du panier (checkout)
-     * Remplacement du système de signature par une confirmation checkbox
+     * Le champ email a été retiré ; la confirmation de surplus s'affiche uniquement pour les commandes en surplus.
      *******************************************************/
     document.getElementById("confirmCartBtn").addEventListener("click", function() {
       computeCartStatus();
-      // Si une commande en surplus existe, vérifier la confirmation
+      // Vérifier si une commande en surplus existe et la confirmation associée
       let hasSurplus = cart.some(item => item.mode === "shop" && item.orderType === "Surplus");
       if (hasSurplus) {
         if (!document.getElementById("surplusConfirmCheckbox").checked) {
@@ -849,35 +849,28 @@
           return;
         }
       }
-      const email = document.getElementById("cartEmailInput").value.trim();
-      if(email === "") {
-        document.getElementById("cartMessage").textContent = "Veuillez renseigner votre adresse email.";
-        return;
-      }
       const dateNow = new Date().toLocaleString();
       ensureEmployeeArrays();
       cart.forEach(item => {
         if (item.mode === "shop") {
           if (item.orderType === "Quota") {
-            // Ajout dans Equipment uniquement si c'est une commande quota
+            // Ajout dans Equipment pour une commande quota
             currentEmployee.equipment.push({
               id: generateId(),
               type: item.type,
               size: item.size,
               date: dateNow,
               status: "en commande",
-              email: email,
               orderType: "Quota"
             });
           } else if (item.orderType === "Surplus") {
-            // Ajout uniquement dans SurplusOrders si c'est une commande en surplus
+            // Ajout dans SurplusOrders pour une commande en surplus
             currentEmployee.surplusOrders.push({
               id: generateId(),
               type: item.type,
               size: item.size,
               price: item.price,
               date: dateNow,
-              email: email,
               status: "en commande",
               orderType: "Surplus"
             });
@@ -894,7 +887,6 @@
       updateCartBadge();
       updateEquipmentTable();
       updateQuotaInfo();
-      document.getElementById("cartEmailInput").value = "";
       document.getElementById("surplusConfirmCheckbox").checked = false;
       setTimeout(function() {
         hideModal("cartModal");
