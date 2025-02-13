@@ -183,7 +183,7 @@
       font-size: 14px;
       display: none;
     }
-    /* Spinner de chargement */
+    /* Spinner de chargement général */
     #loadingSpinner {
       display: none;
       position: fixed;
@@ -204,6 +204,43 @@
       0% { transform: rotate(0deg); }
       100% { transform: rotate(360deg); }
     }
+    /* Spinner pour l'admin */
+    #adminSpinner {
+      display: none;
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 2100;
+    }
+    /* Styles pour la boutique en ligne dans le modal Shop */
+    #shopProductsContainer {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .product-card {
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 10px;
+      margin: 10px;
+      text-align: center;
+      width: calc(50% - 40px);
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      display: inline-block;
+      vertical-align: top;
+      background: #fff;
+    }
+    .product-card img {
+      width: 100%;
+      height: auto;
+      border-radius: 4px;
+    }
+    .product-card select {
+      margin: 10px 0;
+      padding: 6px;
+      font-size: 1em;
+    }
     @media (max-width: 600px) {
       .container {
         margin: 40px 10px;
@@ -219,6 +256,9 @@
         left: 10px;
         font-size: 1em;
       }
+      .product-card {
+        width: calc(100% - 40px);
+      }
     }
     /* Section d'affichage du quota */
     #quotaInfo {
@@ -232,8 +272,13 @@
   </style>
 </head>
 <body>
-  <!-- Spinner de chargement -->
+  <!-- Spinner de chargement général -->
   <div id="loadingSpinner">
+    <div class="spinner"></div>
+  </div>
+  
+  <!-- Spinner de chargement pour l'admin -->
+  <div id="adminSpinner">
     <div class="spinner"></div>
   </div>
   
@@ -328,14 +373,10 @@
     </div>
   </div>
   
-  <!-- Popup : Shop -->
+  <!-- Popup : Shop – Boutique en ligne avec cartes produits -->
   <div id="shopModal" class="modal">
     <h3>Shop</h3>
-    <label for="shopEquipmentType">Équipement :</label>
-    <select id="shopEquipmentType"></select><br>
-    <label for="shopSize">Taille :</label>
-    <select id="shopSize"></select><br>
-    <button id="addToShopCartBtn" class="btn">Ajouter au panier</button>
+    <div id="shopProductsContainer"></div>
     <button id="closeShopModal" class="close-btn">Fermer</button>
   </div>
   
@@ -402,7 +443,7 @@
      * Utilisation de JSONP pour le GET (pour contourner CORS)
      * et fetch avec mode "no-cors" pour le POST.
      *******************************************************/
-    const SHEET_API_URL = "https://script.google.com/macros/s/AKfycbxhYGTiM-EPQbULrWVIPacS12C4jL9kWlzvtqQcAWT2B2SXDvxlWW5TOKDJH37R3J1v5A/exec";
+    const SHEET_API_URL = "https://script.google.com/macros/s/AKfycbyNkJscWQhl9Ez6riGKem6jUvo7ZpIwlhbJhCUXMBTTEEJE5UxaTahiH01KD_BydRE68Q/exec";
     
     // Récupérer les données d'un employé via JSONP
     function fetchEmployeeData(empId) {
@@ -430,13 +471,14 @@
       });
     }
     
-    // Mise à jour des données de l'employé vers Google Sheets (pour Equipment et SurplusOrders)
-    function updateEmployeeData(empId, equipmentData, surplusData) {
+    // Mise à jour des données de l'employé vers Google Sheets (pour Equipment, SurplusOrders et ExchangeOrders)
+    function updateEmployeeData(empId, equipmentData, surplusData, exchangeData) {
       const payload = {
         action: "updateData",
         empId: empId,
         equipment: equipmentData,
-        surplusOrders: surplusData
+        surplusOrders: surplusData,
+        exchangeOrders: exchangeData
       };
       return fetch(SHEET_API_URL, {
         method: "POST",
@@ -455,21 +497,24 @@
         name: "Alice", 
         quota: { pantalon: 2, polo: 3, polaire: 1, casque: 1, veste: 1, lunettes: 1, chaussures: 1, chapeau: 1, adaptateur: 1, habits_pluie: 1 },
         equipment: [],
-        surplusOrders: []
+        surplusOrders: [],
+        exchangeOrders: []
       },
       { 
         id: "emp002", 
         name: "Bob", 
         quota: { pantalon: 2, polo: 3, polaire: 1, casque: 1, veste: 1, lunettes: 1, chaussures: 1, chapeau: 1, adaptateur: 1, habits_pluie: 1 },
         equipment: [],
-        surplusOrders: []
+        surplusOrders: [],
+        exchangeOrders: []
       },
       { 
         id: "admin", 
         name: "Administrateur", 
         quota: {}, 
         equipment: [],
-        surplusOrders: []
+        surplusOrders: [],
+        exchangeOrders: []
       }
     ];
     
@@ -479,11 +524,36 @@
     // Les tarifs en surplus seront chargés depuis Google Sheets
     let surplusPrices = {};
     
-    // S'assurer que les tableaux equipment et surplusOrders existent dans currentEmployee
+    // Objet associant chaque produit à une image (remplacer les URL par de vraies images si nécessaire)
+    const productImages = {
+      pantalon: "https://via.placeholder.com/150?text=Pantalon",
+      polo: "https://via.placeholder.com/150?text=Polo",
+      polaire: "https://via.placeholder.com/150?text=Polaire",
+      casque: "https://via.placeholder.com/150?text=Casque",
+      veste: "https://via.placeholder.com/150?text=Veste",
+      lunettes: "https://via.placeholder.com/150?text=Lunettes",
+      chaussures: "https://via.placeholder.com/150?text=Chaussures",
+      chapeau: "https://via.placeholder.com/150?text=Chapeau",
+      adaptateur: "https://via.placeholder.com/150?text=Adaptateur",
+      habits_pluie: "https://via.placeholder.com/150?text=Habits+Pluie"
+    };
+    
+    // Objet associant chaque produit aux tailles disponibles
+    const productSizes = {
+      pantalon: ["44", "46", "48", "50", "52", "54", "56", "58", "60", "62"],
+      polo: ["S", "M", "L", "XL", "2XL", "3XL", "4XL"],
+      polaire: ["S", "M", "L", "XL", "2XL", "3XL", "4XL"],
+      veste: ["S", "M", "L", "XL", "2XL", "3XL", "4XL"],
+      chaussures: ["40", "41", "42", "43", "44", "45", "46"],
+      habits_pluie: ["S", "M", "L", "XL", "2XL", "3XL", "4XL"]
+    };
+    
+    // S'assurer que les tableaux equipment, surplusOrders et exchangeOrders existent dans currentEmployee
     function ensureEmployeeArrays() {
       if (!currentEmployee) return;
       if (!Array.isArray(currentEmployee.equipment)) currentEmployee.equipment = [];
       if (!Array.isArray(currentEmployee.surplusOrders)) currentEmployee.surplusOrders = [];
+      if (!Array.isArray(currentEmployee.exchangeOrders)) currentEmployee.exchangeOrders = [];
     }
     
     /*******************************************************
@@ -518,7 +588,7 @@
       }
       let html = "<strong>Quota :</strong><br>";
       for (let type in currentEmployee.quota) {
-        // Compter uniquement les équipements du quota (pas les surplus)
+        // Compter uniquement les équipements du quota (pas les surplus ni les échanges en attente)
         let count = currentEmployee.equipment.filter(eq => 
           eq.type === type && (eq.status === "attribué" || eq.status === "en commande" || eq.status === "recu")
         ).length;
@@ -528,54 +598,8 @@
     }
     
     /*******************************************************
-     * Remplissage des menus pour Shop et Échange
+     * Remplissage du menu d'échange
      *******************************************************/
-    function populateShopMenu() {
-      const shopTypeSelect = document.getElementById("shopEquipmentType");
-      const shopSizeSelect = document.getElementById("shopSize");
-      shopTypeSelect.innerHTML = "";
-      for (let type in currentEmployee.quota) {
-        let opt = document.createElement("option");
-        opt.value = type;
-        opt.textContent = type;
-        shopTypeSelect.appendChild(opt);
-      }
-      updateShopSizeDropdown();
-    }
-    function updateShopSizeDropdown() {
-      const shopTypeSelect = document.getElementById("shopEquipmentType");
-      const shopSizeSelect = document.getElementById("shopSize");
-      let selectedType = shopTypeSelect.value;
-      shopSizeSelect.innerHTML = "";
-      if (["casque", "chapeau", "adaptateur", "lunettes"].includes(selectedType)) {
-        let opt = document.createElement("option");
-        opt.value = "N/A";
-        opt.textContent = "N/A";
-        shopSizeSelect.appendChild(opt);
-      } else if (["pantalon", "polo", "polaire", "veste", "chaussures", "habits_pluie"].includes(selectedType)) {
-        let options = {
-          pantalon: ["44", "46", "48", "50", "52", "54", "56", "58", "60", "62"],
-          polo: ["S", "M", "L", "XL", "2XL", "3XL", "4XL"],
-          polaire: ["S", "M", "L", "XL", "2XL", "3XL", "4XL"],
-          veste: ["S", "M", "L", "XL", "2XL", "3XL", "4XL"],
-          chaussures: ["40", "41", "42", "43", "44", "45", "46"],
-          habits_pluie: ["S", "M", "L", "XL", "2XL", "3XL", "4XL"]
-        }[selectedType];
-        options.forEach(size => {
-          let opt = document.createElement("option");
-          opt.value = size;
-          opt.textContent = size;
-          shopSizeSelect.appendChild(opt);
-        });
-      } else {
-        let opt = document.createElement("option");
-        opt.value = "";
-        opt.textContent = "Non applicable";
-        shopSizeSelect.appendChild(opt);
-      }
-    }
-    document.getElementById("shopEquipmentType").addEventListener("change", updateShopSizeDropdown);
-    
     function populateExchangeMenu() {
       const exchangeSelect = document.getElementById("exchangeItemSelect");
       exchangeSelect.innerHTML = "";
@@ -625,7 +649,6 @@
             counts[item.type]++;
           } else {
             item.orderType = "Surplus";
-            // Conversion en minuscules et suppression des espaces pour correspondre aux clés de surplusPrices
             let typeKey = item.type.toString().trim().toLowerCase();
             item.price = surplusPrices[typeKey] || 0;
           }
@@ -696,7 +719,6 @@
       document.getElementById("main-section").style.display = "none";
       document.getElementById("logoutBtn").style.display = "none";
       document.getElementById("login-section").style.display = "flex";
-      // Masquer l'icône du panier sur la page de connexion
       document.getElementById("cartIcon").style.display = "none";
     });
     
@@ -713,7 +735,6 @@
           document.getElementById("loadingSpinner").style.display = "none";
           if(data && data.id) {
             currentEmployee = data;
-            // Mise à jour des tarifs en surplus depuis Google Sheets
             if (data.surplusPrices) {
               surplusPrices = data.surplusPrices;
             }
@@ -721,11 +742,9 @@
             document.getElementById("login-section").style.display = "none";
             document.getElementById("main-section").style.display = "block";
             document.getElementById("logoutBtn").style.display = "block";
-            // Afficher l'icône du panier après connexion
             document.getElementById("cartIcon").style.display = "flex";
             document.getElementById("employeeName").textContent = currentEmployee.name;
             updateEquipmentTable();
-            populateShopMenu();
             populateExchangeMenu();
             updateQuotaInfo();
             if (empId === "admin") {
@@ -749,7 +768,6 @@
             document.getElementById("cartIcon").style.display = "flex";
             document.getElementById("employeeName").textContent = currentEmployee.name;
             updateEquipmentTable();
-            populateShopMenu();
             populateExchangeMenu();
             updateQuotaInfo();
             if (empId === "admin") {
@@ -779,9 +797,9 @@
       document.getElementById(id).classList.remove("active");
       hideOverlay();
     }
-    // Popup Shop
+    // Popup Shop – ouverture via boutique en ligne
     document.getElementById("openShopBtn").addEventListener("click", function() {
-      populateShopMenu();
+      populateShopModal();
       showModal("shopModal");
     });
     document.getElementById("closeShopModal").addEventListener("click", function() {
@@ -813,15 +831,65 @@
     });
     
     /*******************************************************
-     * Bouton "Ajouter au panier" dans le popup Shop
+     * Fonction de création des cartes produits pour le Shop
      *******************************************************/
-    document.getElementById("addToShopCartBtn").addEventListener("click", function() {
-      const type = document.getElementById("shopEquipmentType").value;
-      const size = document.getElementById("shopSize").value;
-      cart.push({ mode: "shop", type, size });
+    function populateShopModal() {
+      const container = document.getElementById("shopProductsContainer");
+      container.innerHTML = "";
+      // Pour chaque type d'article défini dans le quota de l'employé
+      for (let type in currentEmployee.quota) {
+         let card = document.createElement("div");
+         card.className = "product-card";
+         // Image du produit
+         let img = document.createElement("img");
+         img.src = productImages[type] || ("https://via.placeholder.com/150?text=" + type);
+         card.appendChild(img);
+         // Nom du produit
+         let title = document.createElement("h4");
+         title.textContent = type;
+         card.appendChild(title);
+         // Sélecteur de taille
+         let select = document.createElement("select");
+         select.id = "shopSize_" + type;
+         if (["casque", "chapeau", "adaptateur", "lunettes"].includes(type)) {
+           let opt = document.createElement("option");
+           opt.value = "N/A";
+           opt.textContent = "N/A";
+           select.appendChild(opt);
+         } else if (["pantalon", "polo", "polaire", "veste", "chaussures", "habits_pluie"].includes(type)) {
+           let sizes = productSizes[type];
+           sizes.forEach(size => {
+             let opt = document.createElement("option");
+             opt.value = size;
+             opt.textContent = size;
+             select.appendChild(opt);
+           });
+         } else {
+           let opt = document.createElement("option");
+           opt.value = "";
+           opt.textContent = "Non applicable";
+           select.appendChild(opt);
+         }
+         card.appendChild(select);
+         // Bouton Ajouter au panier
+         let btn = document.createElement("button");
+         btn.className = "btn";
+         btn.textContent = "Ajouter au panier";
+         btn.addEventListener("click", function() {
+           addToCartShop(type);
+         });
+         card.appendChild(btn);
+         container.appendChild(card);
+      }
+    }
+    
+    function addToCartShop(type) {
+      const select = document.getElementById("shopSize_" + type);
+      let size = select ? select.value : "";
+      cart.push({ mode: "shop", type: type, size: size });
       updateCartBadge();
       hideModal("shopModal");
-    });
+    }
     
     /*******************************************************
      * Bouton "Ajouter au panier" dans le popup Échange
@@ -837,11 +905,10 @@
     
     /*******************************************************
      * Confirmation du panier (checkout)
-     * Le champ email a été retiré ; la confirmation de surplus s'affiche uniquement pour les commandes en surplus.
+     * La confirmation de surplus s'affiche uniquement pour les commandes en surplus.
      *******************************************************/
     document.getElementById("confirmCartBtn").addEventListener("click", function() {
       computeCartStatus();
-      // Vérifier si une commande en surplus existe et la confirmation associée
       let hasSurplus = cart.some(item => item.mode === "shop" && item.orderType === "Surplus");
       if (hasSurplus) {
         if (!document.getElementById("surplusConfirmCheckbox").checked) {
@@ -854,7 +921,6 @@
       cart.forEach(item => {
         if (item.mode === "shop") {
           if (item.orderType === "Quota") {
-            // Ajout dans Equipment pour une commande quota
             currentEmployee.equipment.push({
               id: generateId(),
               type: item.type,
@@ -864,7 +930,6 @@
               orderType: "Quota"
             });
           } else if (item.orderType === "Surplus") {
-            // Ajout dans SurplusOrders pour une commande en surplus
             currentEmployee.surplusOrders.push({
               id: generateId(),
               type: item.type,
@@ -876,11 +941,20 @@
             });
           }
         } else if (item.mode === "exchange") {
-          currentEmployee.equipment = currentEmployee.equipment.filter(eq => eq.id !== item.equipmentId);
+          // Pour une commande d'échange, on l'enregistre dans exchangeOrders pour validation admin
+          currentEmployee.exchangeOrders.push({
+              id: generateId(),
+              type: item.type,
+              size: item.size,
+              equipmentId: item.equipmentId,
+              date: dateNow,
+              status: "en commande",
+              orderType: "Exchange"
+          });
         }
       });
       document.getElementById("cartMessage").textContent = "Commande traitée avec succès.";
-      updateEmployeeData(currentEmployee.id, currentEmployee.equipment, currentEmployee.surplusOrders)
+      updateEmployeeData(currentEmployee.id, currentEmployee.equipment, currentEmployee.surplusOrders, currentEmployee.exchangeOrders)
         .then(result => console.log("Mise à jour réussie :", result))
         .catch(err => console.error(err));
       cart = [];
@@ -903,7 +977,7 @@
     
     /*******************************************************
      * Interface Administrateur : Mise à jour des commandes en cours
-     * Combine les commandes du quota et les commandes en surplus
+     * Combine les commandes du quota, les surplus et les échanges
      *******************************************************/
     function updatePendingOrders() {
       fetchAllOrders().then(orders => {
@@ -929,18 +1003,20 @@
     
     // Fonction de validation d'une commande (admin)
     function validateOrder(empId, orderId, orderType) {
+      document.getElementById("adminSpinner").style.display = "block";
       fetchEmployeeData(empId)
         .then(data => {
-          if (orderType === "Quota") {
+          if(orderType === "Quota") {
             let equipment = data.equipment;
             let order = equipment.find(item => item.id === orderId);
             if(order && order.status === "en commande") {
               order.status = "recu";
             }
-            updateEmployeeData(empId, equipment, data.surplusOrders)
+            updateEmployeeData(empId, equipment, data.surplusOrders, data.exchangeOrders)
               .then(result => {
                 console.log("Commande validée :", result);
                 updatePendingOrders();
+                document.getElementById("adminSpinner").style.display = "none";
               });
           } else if (orderType === "Surplus") {
             let surplusOrders = data.surplusOrders || [];
@@ -948,14 +1024,32 @@
             if(order && order.status === "en commande") {
               order.status = "recu";
             }
-            updateEmployeeData(empId, data.equipment, surplusOrders)
+            updateEmployeeData(empId, data.equipment, surplusOrders, data.exchangeOrders)
               .then(result => {
                 console.log("Commande validée :", result);
                 updatePendingOrders();
+                document.getElementById("adminSpinner").style.display = "none";
+              });
+          } else if (orderType === "Exchange") {
+            let exchangeOrders = data.exchangeOrders || [];
+            let order = exchangeOrders.find(item => item.id === orderId);
+            if(order && order.status === "en commande") {
+              order.status = "recu";
+              // Supprimer l'article correspondant de la liste d'équipements
+              data.equipment = data.equipment.filter(eq => eq.id !== order.equipmentId);
+            }
+            updateEmployeeData(empId, data.equipment, data.surplusOrders, exchangeOrders)
+              .then(result => {
+                console.log("Commande d'échange validée :", result);
+                updatePendingOrders();
+                document.getElementById("adminSpinner").style.display = "none";
               });
           }
         })
-        .catch(err => console.error(err));
+        .catch(err => {
+          console.error(err);
+          document.getElementById("adminSpinner").style.display = "none";
+        });
     }
   </script>
 </body>
