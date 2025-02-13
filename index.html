@@ -1,0 +1,924 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Shop des Habits et EPI</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    /* Style global – design moderne, épuré et responsive */
+    body {
+      background-color: #f7f7f7;
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+    }
+    .container {
+      max-width: 900px;
+      margin: 80px auto 20px auto;
+      background: #fff;
+      padding: 20px 40px 40px 40px;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      position: relative;
+    }
+    h1, h2, h3 {
+      text-align: center;
+      color: #333;
+    }
+    /* Centre le formulaire de connexion */
+    #login-section {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin-top: 50px;
+    }
+    #login-section input {
+      width: 200px;
+      padding: 8px;
+      margin: 10px;
+      font-size: 1em;
+    }
+    #login-section button {
+      padding: 8px 16px;
+      font-size: 1em;
+      cursor: pointer;
+      background: #007BFF;
+      border: none;
+      color: #fff;
+      border-radius: 4px;
+    }
+    /* Bouton déconnexion */
+    #logoutBtn {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      padding: 6px 12px;
+      font-size: 0.9em;
+      background: #f44336;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      display: none;
+    }
+    /* Tableau des équipements */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 15px 0;
+    }
+    th, td {
+      border: 1px solid #ddd;
+      padding: 8px;
+      text-align: center;
+      font-size: 0.9em;
+    }
+    th {
+      background-color: #f4f4f4;
+    }
+    .btn {
+      padding: 10px 15px;
+      border: none;
+      background: #007BFF;
+      color: #fff;
+      border-radius: 4px;
+      cursor: pointer;
+      margin: 5px;
+    }
+    .btn:hover {
+      background: #0056b3;
+    }
+    .close-btn {
+      background: #f44336;
+      color: #fff;
+      border: none;
+      padding: 5px 10px;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    /* Styles pour les modales */
+    .modal {
+      display: none;
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: #fff;
+      padding: 20px 30px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      z-index: 1000;
+      max-height: 90%;
+      overflow-y: auto;
+      width: 90%;
+      max-width: 500px;
+    }
+    .modal.active {
+      display: block;
+    }
+    .modal h3 {
+      margin-top: 0;
+    }
+    /* Overlay pour modales */
+    .overlay {
+      display: none;
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(0,0,0,0.3);
+      z-index: 900;
+    }
+    .overlay.active {
+      display: block;
+    }
+    /* Icône du panier en haut à droite */
+    #cartIcon {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      font-size: 30px;
+      cursor: pointer;
+    }
+    #cartIcon .badge {
+      position: absolute;
+      top: -8px;
+      right: -8px;
+      background: red;
+      color: white;
+      border-radius: 50%;
+      padding: 2px 6px;
+      font-size: 14px;
+      display: none;
+    }
+    /* Spinner de chargement */
+    #loadingSpinner {
+      display: none;
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 1100;
+    }
+    .spinner {
+      border: 8px solid #f3f3f3;
+      border-top: 8px solid #007BFF;
+      border-radius: 50%;
+      width: 60px;
+      height: 60px;
+      animation: spin 1s linear infinite;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    @media (max-width: 600px) {
+      .container {
+        margin: 40px 10px;
+        padding: 20px;
+      }
+      #cartIcon {
+        font-size: 26px;
+      }
+    }
+    /* Section d'affichage du quota */
+    #quotaInfo {
+      margin: 15px 0;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      background: #f9f9f9;
+      font-size: 0.9em;
+    }
+  </style>
+</head>
+<body>
+  <!-- Spinner de chargement -->
+  <div id="loadingSpinner">
+    <div class="spinner"></div>
+  </div>
+  
+  <!-- Overlay pour modales -->
+  <div id="overlay" class="overlay"></div>
+  
+  <!-- Icône du panier en haut à droite -->
+  <div id="cartIcon">
+    🛒<span class="badge" id="cartCount">0</span>
+  </div>
+  
+  <!-- Bouton de déconnexion -->
+  <button id="logoutBtn">Déconnexion</button>
+  
+  <div class="container">
+    <h1>Shop des Habits et EPI</h1>
+    
+    <!-- Section de connexion centrée -->
+    <div id="login-section">
+      <h2>Connexion Employé</h2>
+      <input type="text" id="employeeId" placeholder="Entrez votre identifiant">
+      <button id="loginBtn" class="btn">Se connecter</button>
+      <div id="loginMessage" style="color: red;"></div>
+    </div>
+    
+    <!-- Section principale après connexion -->
+    <div id="main-section" style="display: none;">
+      <h2>Bienvenue, <span id="employeeName"></span>!</h2>
+      
+      <!-- Affichage du quota (possédé / droit à) -->
+      <div id="quotaInfo"></div>
+      
+      <h3>Mes équipements (quota uniquement)</h3>
+      <table id="equipmentTable">
+        <thead>
+          <tr>
+            <th>Équipement</th>
+            <th>Taille</th>
+            <th>Date</th>
+            <th>Statut</th>
+          </tr>
+        </thead>
+        <tbody>
+          <!-- Rempli dynamiquement -->
+        </tbody>
+      </table>
+      <div style="text-align: center;">
+        <button id="openShopBtn" class="btn">Shop</button>
+        <button id="openExchangeBtn" class="btn">Faire un échange</button>
+        <button id="openSurplusHistoryBtn" class="btn">Historique de surplus</button>
+      </div>
+      <!-- Interface Administrateur -->
+      <div id="admin-section" style="display: none; margin-top: 30px; border-top: 1px solid #ddd; padding-top: 20px;">
+        <h2>Interface Administrateur</h2>
+        <h3>Modifier le quota d'un employé</h3>
+        <label for="adminEmployeeId">Identifiant Employé :</label>
+        <input type="text" id="adminEmployeeId" placeholder="Identifiant"><br>
+        <label for="newQuota">Nouveau quota (format JSON) :</label><br>
+        <textarea id="newQuota" rows="4" cols="50">
+{
+  "pantalon": 2,
+  "polo": 3,
+  "polaire": 1,
+  "casque": 1,
+  "veste": 1,
+  "lunettes": 1,
+  "chaussures": 1,
+  "chapeau": 1,
+  "adaptateur": 1,
+  "habits_pluie": 1
+}
+        </textarea><br>
+        <button id="updateQuotaBtn" class="btn">Mettre à jour le quota</button>
+        <div id="adminMessage" style="color: purple;"></div>
+        <h3>Commandes en cours</h3>
+        <table id="pendingOrdersTable">
+          <thead>
+            <tr>
+              <th>Employé</th>
+              <th>Équipement</th>
+              <th>Taille</th>
+              <th>Date</th>
+              <th>Type</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            <!-- Rempli dynamiquement -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Popup : Shop -->
+  <div id="shopModal" class="modal">
+    <h3>Shop</h3>
+    <label for="shopEquipmentType">Équipement :</label>
+    <select id="shopEquipmentType"></select><br>
+    <label for="shopSize">Taille :</label>
+    <select id="shopSize"></select><br>
+    <button id="addToShopCartBtn" class="btn">Ajouter au panier</button>
+    <button id="closeShopModal" class="close-btn">Fermer</button>
+  </div>
+  
+  <!-- Popup : Échange -->
+  <div id="exchangeModal" class="modal">
+    <h3>Faire un échange</h3>
+    <label for="exchangeItemSelect">Choisissez l'article à échanger :</label>
+    <select id="exchangeItemSelect"></select><br>
+    <button id="addToExchangeCartBtn" class="btn">Ajouter au panier</button>
+    <button id="closeExchangeModal" class="close-btn">Fermer</button>
+  </div>
+  
+  <!-- Popup : Historique Surplus -->
+  <div id="surplusHistoryModal" class="modal">
+    <h3>Historique des commandes en surplus</h3>
+    <table id="surplusHistoryTable">
+      <thead>
+        <tr>
+          <th>Équipement</th>
+          <th>Taille</th>
+          <th>Prix</th>
+          <th>Date</th>
+          <th>Statut</th>
+        </tr>
+      </thead>
+      <tbody>
+        <!-- Rempli dynamiquement -->
+      </tbody>
+    </table>
+    <button id="closeSurplusHistoryModal" class="close-btn">Fermer</button>
+  </div>
+  
+  <!-- Popup : Panier commun -->
+  <div id="cartModal" class="modal">
+    <h3>Votre Panier</h3>
+    <table id="cartTable">
+      <thead>
+        <tr>
+          <th>Mode</th>
+          <th>Équipement</th>
+          <th>Taille</th>
+          <th>Catégorie</th>
+          <th>Prix</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        <!-- Rempli dynamiquement -->
+      </tbody>
+    </table>
+    <!-- Champ Email -->
+    <label for="cartEmailInput">Votre adresse email :</label>
+    <input type="email" id="cartEmailInput" placeholder="ex: email@exemple.com"><br>
+    <!-- Confirmation pour surplus -->
+    <div id="surplusConfirmationContainer" style="display: none; margin:10px 0;">
+      <input type="checkbox" id="surplusConfirmCheckbox">
+      <label for="surplusConfirmCheckbox">Je confirme ma commande supplémentaire et accepte la déduction de salaires</label>
+    </div>
+    <button id="confirmCartBtn" class="btn">Confirmer</button>
+    <button id="closeCartModal" class="close-btn">Fermer</button>
+    <div id="cartMessage" style="color: green;"></div>
+  </div>
+  
+  <script>
+    /*******************************************************
+     * INTÉGRATION GOOGLE SHEETS
+     * Utilisation de JSONP pour le GET (pour contourner CORS)
+     * et fetch avec mode "no-cors" pour le POST.
+     *******************************************************/
+    const SHEET_API_URL = "https://script.google.com/macros/s/AKfycbyCNAl-meLemHMJYYOiguFStrWIGeeBmpexuo3Sn8J9xhXgkLcWAUotdgXXIbjKiFQ/exec";
+    
+    // Récupérer les données d'un employé via JSONP
+    function fetchEmployeeData(empId) {
+      return new Promise((resolve, reject) => {
+        window.handleEmployeeData = function(data) {
+          resolve(data);
+        };
+        const script = document.createElement("script");
+        script.src = SHEET_API_URL + "?action=getEmployee&empId=" + encodeURIComponent(empId) + "&callback=handleEmployeeData";
+        script.onerror = reject;
+        document.body.appendChild(script);
+      });
+    }
+    
+    // Nouvelle fonction pour récupérer toutes les commandes en "en commande" (pour l'admin)
+    function fetchAllOrders() {
+      return new Promise((resolve, reject) => {
+        window.handleAllOrders = function(data) {
+          resolve(data);
+        };
+        const script = document.createElement("script");
+        script.src = SHEET_API_URL + "?action=getAllOrders&callback=handleAllOrders";
+        script.onerror = reject;
+        document.body.appendChild(script);
+      });
+    }
+    
+    // Mise à jour des données de l'employé vers Google Sheets (pour Equipment et SurplusOrders)
+    function updateEmployeeData(empId, equipmentData, surplusData) {
+      const payload = {
+        action: "updateData",
+        empId: empId,
+        equipment: equipmentData,
+        surplusOrders: surplusData
+      };
+      return fetch(SHEET_API_URL, {
+        method: "POST",
+        mode: "no-cors",
+        body: JSON.stringify(payload),
+        headers: {"Content-Type": "application/json"}
+      }).then(() => ({ status: "success" }));
+    }
+    
+    /*******************************************************
+     * Données simulées initiales (pour tests locaux)
+     *******************************************************/
+    let employees = [
+      { 
+        id: "emp001", 
+        name: "Alice", 
+        quota: { pantalon: 2, polo: 3, polaire: 1, casque: 1, veste: 1, lunettes: 1, chaussures: 1, chapeau: 1, adaptateur: 1, habits_pluie: 1 },
+        equipment: [],
+        surplusOrders: []
+      },
+      { 
+        id: "emp002", 
+        name: "Bob", 
+        quota: { pantalon: 2, polo: 3, polaire: 1, casque: 1, veste: 1, lunettes: 1, chaussures: 1, chapeau: 1, adaptateur: 1, habits_pluie: 1 },
+        equipment: [],
+        surplusOrders: []
+      },
+      { 
+        id: "admin", 
+        name: "Administrateur", 
+        quota: {}, 
+        equipment: [],
+        surplusOrders: []
+      }
+    ];
+    
+    let currentEmployee = null;
+    // Panier commun – items en mode "shop" ou "exchange"
+    let cart = [];
+    // Les tarifs en surplus seront chargés depuis Google Sheets
+    let surplusPrices = {};
+    
+    // S'assurer que les tableaux equipment et surplusOrders existent dans currentEmployee
+    function ensureEmployeeArrays() {
+      if (!currentEmployee) return;
+      if (!Array.isArray(currentEmployee.equipment)) currentEmployee.equipment = [];
+      if (!Array.isArray(currentEmployee.surplusOrders)) currentEmployee.surplusOrders = [];
+    }
+    
+    /*******************************************************
+     * Mise à jour de "Mes équipements" (uniquement les commandes quota)
+     *******************************************************/
+    function updateEquipmentTable() {
+      const tbody = document.querySelector("#equipmentTable tbody");
+      tbody.innerHTML = "";
+      ensureEmployeeArrays();
+      if (currentEmployee.equipment.length === 0) {
+        let tr = document.createElement("tr");
+        tr.innerHTML = `<td colspan="4">Aucun équipement commandé.</td>`;
+        tbody.appendChild(tr);
+      } else {
+        let sorted = currentEmployee.equipment.slice().sort((a, b) => a.type.localeCompare(b.type));
+        sorted.forEach(item => {
+          let tr = document.createElement("tr");
+          tr.innerHTML = `<td>${item.type}</td><td>${item.size}</td><td>${item.date}</td><td>${item.status}</td>`;
+          tbody.appendChild(tr);
+        });
+      }
+    }
+    
+    /*******************************************************
+     * Affichage du quota possédé / droit à
+     *******************************************************/
+    function updateQuotaInfo() {
+      const quotaDiv = document.getElementById("quotaInfo");
+      if (!currentEmployee || !currentEmployee.quota) {
+        quotaDiv.textContent = "";
+        return;
+      }
+      let html = "<strong>Quota :</strong><br>";
+      for (let type in currentEmployee.quota) {
+        // Compter uniquement les équipements du quota (pas les surplus)
+        let count = currentEmployee.equipment.filter(eq => 
+          eq.type === type && (eq.status === "attribué" || eq.status === "en commande" || eq.status === "recu")
+        ).length;
+        html += `${type} : ${count} / ${currentEmployee.quota[type]}<br>`;
+      }
+      quotaDiv.innerHTML = html;
+    }
+    
+    /*******************************************************
+     * Remplissage des menus pour Shop et Échange
+     *******************************************************/
+    function populateShopMenu() {
+      const shopTypeSelect = document.getElementById("shopEquipmentType");
+      const shopSizeSelect = document.getElementById("shopSize");
+      shopTypeSelect.innerHTML = "";
+      for (let type in currentEmployee.quota) {
+        let opt = document.createElement("option");
+        opt.value = type;
+        opt.textContent = type;
+        shopTypeSelect.appendChild(opt);
+      }
+      updateShopSizeDropdown();
+    }
+    function updateShopSizeDropdown() {
+      const shopTypeSelect = document.getElementById("shopEquipmentType");
+      const shopSizeSelect = document.getElementById("shopSize");
+      let selectedType = shopTypeSelect.value;
+      shopSizeSelect.innerHTML = "";
+      if (["casque", "chapeau", "adaptateur", "lunettes"].includes(selectedType)) {
+        let opt = document.createElement("option");
+        opt.value = "N/A";
+        opt.textContent = "N/A";
+        shopSizeSelect.appendChild(opt);
+      } else if (["pantalon", "polo", "polaire", "veste", "chaussures", "habits_pluie"].includes(selectedType)) {
+        let options = {
+          pantalon: ["44", "46", "48", "50", "52", "54", "56", "58", "60", "62"],
+          polo: ["S", "M", "L", "XL", "2XL", "3XL", "4XL"],
+          polaire: ["S", "M", "L", "XL", "2XL", "3XL", "4XL"],
+          veste: ["S", "M", "L", "XL", "2XL", "3XL", "4XL"],
+          chaussures: ["40", "41", "42", "43", "44", "45", "46"],
+          habits_pluie: ["S", "M", "L", "XL", "2XL", "3XL", "4XL"]
+        }[selectedType];
+        options.forEach(size => {
+          let opt = document.createElement("option");
+          opt.value = size;
+          opt.textContent = size;
+          shopSizeSelect.appendChild(opt);
+        });
+      } else {
+        let opt = document.createElement("option");
+        opt.value = "";
+        opt.textContent = "Non applicable";
+        shopSizeSelect.appendChild(opt);
+      }
+    }
+    document.getElementById("shopEquipmentType").addEventListener("change", updateShopSizeDropdown);
+    
+    function populateExchangeMenu() {
+      const exchangeSelect = document.getElementById("exchangeItemSelect");
+      exchangeSelect.innerHTML = "";
+      ensureEmployeeArrays();
+      if (currentEmployee.equipment.length === 0) {
+        let opt = document.createElement("option");
+        opt.value = "";
+        opt.textContent = "Aucun équipement disponible";
+        exchangeSelect.appendChild(opt);
+      } else {
+        currentEmployee.equipment.forEach(item => {
+          let opt = document.createElement("option");
+          opt.value = item.id;
+          opt.textContent = `${item.type} (Taille: ${item.size}) – Commandé le ${item.date}`;
+          exchangeSelect.appendChild(opt);
+        });
+      }
+    }
+    
+    /*******************************************************
+     * Gestion du panier commun
+     *******************************************************/
+    function updateCartBadge() {
+      const cartCount = document.getElementById("cartCount");
+      if (cart.length > 0) {
+        cartCount.textContent = cart.length;
+        cartCount.style.display = "inline";
+      } else {
+        cartCount.style.display = "none";
+      }
+    }
+    function computeCartStatus() {
+      ensureEmployeeArrays();
+      let counts = {};
+      // Comptabiliser uniquement les équipements du quota (excluant le surplus)
+      for (let type in currentEmployee.quota) {
+        counts[type] = currentEmployee.equipment.filter(eq => 
+          eq.type === type && (eq.status === "attribué" || eq.status === "en commande" || eq.status === "recu")
+        ).length;
+      }
+      cart.forEach(item => {
+        if (item.mode === "shop") {
+          let allowed = currentEmployee.quota[item.type] || 0;
+          if (counts[item.type] < allowed) {
+            item.orderType = "Quota";
+            item.price = 0;
+            counts[item.type]++;
+          } else {
+            item.orderType = "Surplus";
+            item.price = surplusPrices[item.type] || 0;
+          }
+        }
+      });
+    }
+    function updateCartDisplay() {
+      computeCartStatus();
+      const tbody = document.querySelector("#cartTable tbody");
+      tbody.innerHTML = "";
+      if (cart.length === 0) {
+        let tr = document.createElement("tr");
+        tr.innerHTML = `<td colspan="6">Votre panier est vide.</td>`;
+        tbody.appendChild(tr);
+      } else {
+        cart.forEach((item, index) => {
+          let tr = document.createElement("tr");
+          let actionBtn = `<button onclick="removeCartItem(${index})" class="close-btn">X</button>`;
+          if (item.mode === "shop") {
+            let priceDisplay = item.orderType === "Surplus" ? `CHF ${item.price}` : "-";
+            tr.innerHTML = `<td>Shop</td><td>${item.type}</td><td>${item.size}</td><td>${item.orderType}</td><td>${priceDisplay}</td><td>${actionBtn}</td>`;
+          } else if (item.mode === "exchange") {
+            tr.innerHTML = `<td>Échange</td><td>${item.type}</td><td>${item.size}</td><td>-</td><td>-</td><td>${actionBtn}</td>`;
+          }
+          tbody.appendChild(tr);
+        });
+      }
+    }
+    function removeCartItem(index) {
+      cart.splice(index, 1);
+      updateCartBadge();
+      updateCartDisplay();
+    }
+    
+    /*******************************************************
+     * Affichage de l'historique des commandes en surplus
+     *******************************************************/
+    function updateSurplusHistory() {
+      const tbody = document.querySelector("#surplusHistoryTable tbody");
+      tbody.innerHTML = "";
+      ensureEmployeeArrays();
+      if (currentEmployee.surplusOrders.length === 0) {
+        let tr = document.createElement("tr");
+        tr.innerHTML = `<td colspan="5">Aucune commande en surplus.</td>`;
+        tbody.appendChild(tr);
+      } else {
+        currentEmployee.surplusOrders.forEach(order => {
+          let tr = document.createElement("tr");
+          tr.innerHTML = `<td>${order.type}</td><td>${order.size}</td><td>CHF ${order.price}</td><td>${order.date}</td><td>${order.status || "en commande"}</td>`;
+          tbody.appendChild(tr);
+        });
+      }
+    }
+    
+    /*******************************************************
+     * Déconnexion
+     *******************************************************/
+    document.getElementById("logoutBtn").addEventListener("click", function() {
+      currentEmployee = null;
+      cart = [];
+      updateCartBadge();
+      document.getElementById("main-section").style.display = "none";
+      document.getElementById("logoutBtn").style.display = "none";
+      document.getElementById("login-section").style.display = "flex";
+    });
+    
+    /*******************************************************
+     * Connexion avec Google Sheets (GET via JSONP)
+     * Affichage du spinner pendant le chargement
+     *******************************************************/
+    document.getElementById("loginBtn").addEventListener("click", function() {
+      const empId = document.getElementById("employeeId").value.trim();
+      const loginMessage = document.getElementById("loginMessage");
+      document.getElementById("loadingSpinner").style.display = "block";
+      fetchEmployeeData(empId)
+        .then(data => {
+          document.getElementById("loadingSpinner").style.display = "none";
+          if(data && data.id) {
+            currentEmployee = data;
+            // Mise à jour des tarifs en surplus depuis Google Sheets
+            if (data.surplusPrices) {
+              surplusPrices = data.surplusPrices;
+            }
+            ensureEmployeeArrays();
+            document.getElementById("login-section").style.display = "none";
+            document.getElementById("main-section").style.display = "block";
+            document.getElementById("logoutBtn").style.display = "block";
+            document.getElementById("employeeName").textContent = currentEmployee.name;
+            updateEquipmentTable();
+            populateShopMenu();
+            populateExchangeMenu();
+            updateQuotaInfo();
+            // Afficher la confirmation pour les commandes en surplus
+            document.getElementById("surplusConfirmationContainer").style.display = "block";
+            // Si l'utilisateur est admin, charger toutes les commandes en cours
+            if (empId === "admin") {
+              document.getElementById("admin-section").style.display = "block";
+              updatePendingOrders();
+            }
+          } else {
+            loginMessage.textContent = "Identifiant non trouvé.";
+          }
+        })
+        .catch(err => {
+          document.getElementById("loadingSpinner").style.display = "none";
+          console.error(err);
+          let localEmp = employees.find(emp => emp.id === empId);
+          if(localEmp) {
+            currentEmployee = localEmp;
+            ensureEmployeeArrays();
+            document.getElementById("login-section").style.display = "none";
+            document.getElementById("main-section").style.display = "block";
+            document.getElementById("logoutBtn").style.display = "block";
+            document.getElementById("employeeName").textContent = currentEmployee.name;
+            updateEquipmentTable();
+            populateShopMenu();
+            populateExchangeMenu();
+            updateQuotaInfo();
+            document.getElementById("surplusConfirmationContainer").style.display = "block";
+            if (empId === "admin") {
+              document.getElementById("admin-section").style.display = "block";
+              updatePendingOrders();
+            }
+          } else {
+            loginMessage.textContent = "Identifiant non trouvé.";
+          }
+        });
+    });
+    
+    /*******************************************************
+     * Affichage/Masquage des modales et de l'overlay
+     *******************************************************/
+    function showOverlay() {
+      document.getElementById("overlay").classList.add("active");
+    }
+    function hideOverlay() {
+      document.getElementById("overlay").classList.remove("active");
+    }
+    function showModal(id) {
+      document.getElementById(id).classList.add("active");
+      showOverlay();
+    }
+    function hideModal(id) {
+      document.getElementById(id).classList.remove("active");
+      hideOverlay();
+    }
+    // Popup Shop
+    document.getElementById("openShopBtn").addEventListener("click", function() {
+      populateShopMenu();
+      showModal("shopModal");
+    });
+    document.getElementById("closeShopModal").addEventListener("click", function() {
+      hideModal("shopModal");
+    });
+    // Popup Échange
+    document.getElementById("openExchangeBtn").addEventListener("click", function() {
+      populateExchangeMenu();
+      showModal("exchangeModal");
+    });
+    document.getElementById("closeExchangeModal").addEventListener("click", function() {
+      hideModal("exchangeModal");
+    });
+    // Popup Historique Surplus
+    document.getElementById("openSurplusHistoryBtn").addEventListener("click", function() {
+      updateSurplusHistory();
+      showModal("surplusHistoryModal");
+    });
+    document.getElementById("closeSurplusHistoryModal").addEventListener("click", function() {
+      hideModal("surplusHistoryModal");
+    });
+    // Popup Panier via l'icône du panier
+    document.getElementById("cartIcon").addEventListener("click", function() {
+      updateCartDisplay();
+      showModal("cartModal");
+    });
+    document.getElementById("closeCartModal").addEventListener("click", function() {
+      hideModal("cartModal");
+    });
+    
+    /*******************************************************
+     * Bouton "Ajouter au panier" dans le popup Shop
+     *******************************************************/
+    document.getElementById("addToShopCartBtn").addEventListener("click", function() {
+      const type = document.getElementById("shopEquipmentType").value;
+      const size = document.getElementById("shopSize").value;
+      cart.push({ mode: "shop", type, size });
+      updateCartBadge();
+      hideModal("shopModal");
+    });
+    
+    /*******************************************************
+     * Bouton "Ajouter au panier" dans le popup Échange
+     *******************************************************/
+    document.getElementById("addToExchangeCartBtn").addEventListener("click", function() {
+      const selectedId = document.getElementById("exchangeItemSelect").value;
+      const eq = currentEmployee.equipment.find(item => item.id === selectedId);
+      if (!eq) return;
+      cart.push({ mode: "exchange", equipmentId: eq.id, type: eq.type, size: eq.size });
+      updateCartBadge();
+      hideModal("exchangeModal");
+    });
+    
+    /*******************************************************
+     * Confirmation du panier (checkout)
+     * Remplacement du système de signature par une confirmation checkbox
+     *******************************************************/
+    document.getElementById("confirmCartBtn").addEventListener("click", function() {
+      computeCartStatus();
+      // Si une commande en surplus existe, vérifier la confirmation
+      let hasSurplus = cart.some(item => item.mode === "shop" && item.orderType === "Surplus");
+      if (hasSurplus) {
+        if (!document.getElementById("surplusConfirmCheckbox").checked) {
+          document.getElementById("cartMessage").textContent = "Veuillez confirmer votre commande en surplus et accepter la déduction de salaires.";
+          return;
+        }
+      }
+      const email = document.getElementById("cartEmailInput").value.trim();
+      if(email === "") {
+        document.getElementById("cartMessage").textContent = "Veuillez renseigner votre adresse email.";
+        return;
+      }
+      const dateNow = new Date().toLocaleString();
+      ensureEmployeeArrays();
+      cart.forEach(item => {
+        if (item.mode === "shop") {
+          if (item.orderType === "Quota") {
+            // Ajout dans Equipment uniquement si c'est une commande quota
+            currentEmployee.equipment.push({
+              id: generateId(),
+              type: item.type,
+              size: item.size,
+              date: dateNow,
+              status: "en commande",
+              email: email,
+              orderType: "Quota"
+            });
+          } else if (item.orderType === "Surplus") {
+            // Ajout uniquement dans SurplusOrders si c'est une commande en surplus
+            currentEmployee.surplusOrders.push({
+              id: generateId(),
+              type: item.type,
+              size: item.size,
+              price: item.price,
+              date: dateNow,
+              email: email,
+              status: "en commande",
+              orderType: "Surplus"
+            });
+          }
+        } else if (item.mode === "exchange") {
+          currentEmployee.equipment = currentEmployee.equipment.filter(eq => eq.id !== item.equipmentId);
+        }
+      });
+      document.getElementById("cartMessage").textContent = "Commande traitée avec succès.";
+      updateEmployeeData(currentEmployee.id, currentEmployee.equipment, currentEmployee.surplusOrders)
+        .then(result => console.log("Mise à jour réussie :", result))
+        .catch(err => console.error(err));
+      cart = [];
+      updateCartBadge();
+      updateEquipmentTable();
+      updateQuotaInfo();
+      document.getElementById("cartEmailInput").value = "";
+      document.getElementById("surplusConfirmCheckbox").checked = false;
+      setTimeout(function() {
+        hideModal("cartModal");
+        document.getElementById("cartMessage").textContent = "";
+      }, 1500);
+    });
+    
+    /*******************************************************
+     * Génération d'un ID unique
+     *******************************************************/
+    function generateId() {
+      return 'eq-' + Date.now() + '-' + Math.floor(Math.random() * 1000);
+    }
+    
+    /*******************************************************
+     * Interface Administrateur : Mise à jour des commandes en cours
+     * Combine les commandes du quota et les commandes en surplus
+     *******************************************************/
+    function updatePendingOrders() {
+      fetchAllOrders().then(orders => {
+        const tbody = document.querySelector("#pendingOrdersTable tbody");
+        tbody.innerHTML = "";
+        if (orders.length === 0) {
+          let tr = document.createElement("tr");
+          tr.innerHTML = `<td colspan="6">Aucune commande en cours.</td>`;
+          tbody.appendChild(tr);
+        } else {
+          orders.forEach(order => {
+            // Récupérer le nom de l'employé depuis le tableau simulé (si disponible)
+            let emp = employees.find(e => e.id === order.empId);
+            let empName = emp ? emp.name : order.empId;
+            let tr = document.createElement("tr");
+            tr.innerHTML = `<td>${empName}</td><td>${order.type}</td><td>${order.size}</td><td>${order.date}</td><td>${order.orderType || "Quota"}</td>
+              <td><button class="btn" onclick="validateOrder('${order.empId}','${order.id}','${order.orderType || "Quota"}')">Valider</button></td>`;
+            tbody.appendChild(tr);
+          });
+        }
+      }).catch(err => console.error(err));
+    }
+    
+    // Fonction de validation d'une commande (admin)
+    function validateOrder(empId, orderId, orderType) {
+      fetchEmployeeData(empId)
+        .then(data => {
+          if (orderType === "Quota") {
+            let equipment = data.equipment;
+            let order = equipment.find(item => item.id === orderId);
+            if(order && order.status === "en commande") {
+              order.status = "recu";
+            }
+            updateEmployeeData(empId, equipment, data.surplusOrders)
+              .then(result => {
+                console.log("Commande validée :", result);
+                updatePendingOrders();
+              });
+          } else if (orderType === "Surplus") {
+            let surplusOrders = data.surplusOrders || [];
+            let order = surplusOrders.find(item => item.id === orderId);
+            if(order && order.status === "en commande") {
+              order.status = "recu";
+            }
+            updateEmployeeData(empId, data.equipment, surplusOrders)
+              .then(result => {
+                console.log("Commande validée :", result);
+                updatePendingOrders();
+              });
+          }
+        })
+        .catch(err => console.error(err));
+    }
+  </script>
+</body>
+</html>
